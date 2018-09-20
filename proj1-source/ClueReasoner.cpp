@@ -161,8 +161,78 @@ void ClueReasoner::AddInitialClauses()
     caseFileClause.empty();
 
 	// No two cards in each category can both be in the case file.
-	// TO BE IMPLEMENTED AS AN EXERCISE
+	//Similar logic to no cards should be in two places, except if there's one card of a category in the case file, then every other card cannot be assigned to the case file
+    vector<Clause> oneCardOfCategoryInCaseFile; //A disjunction of a card being in case file
+    for(int s = 0; s <= num_suspects; s++) { //Iterate over all players
+        vector<Clause> cardInCaseFileConjunction;
+        Clause cardInCaseFileClause;
+        cardInCaseFileClause.push_back(GetPairNum("cf", suspects[s]));
+        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
+        for(int other = 0; other <= num_suspects; other++) {
+            if(other != s) {
+                Clause cardNotInCaseFile;
+                cardNotInCaseFile.push_back(GetPairNum("cf", suspects[other]) * -1);
+            }
+        }
+        if(oneCardOfCategoryInCaseFile.empty()) {
+            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
+        } else {
+            vector<Clause> temp = oneCardOfCategoryInCaseFile;
+            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+        }
+    }
+    for(Clause clause : oneCardOfCategoryInCaseFile) {
+        solver->AddClause(clause);
+    }
+    oneCardOfCategoryInCaseFile.empty();
+    
+    for(int w = 0; w <= num_weapons; w++) { //Iterate over all players
+        vector<Clause> cardInCaseFileConjunction;
+        Clause cardInCaseFileClause;
+        cardInCaseFileClause.push_back(GetPairNum("cf", weapons[w]));
+        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
+        for(int other = 0; other <= num_weapons; other++) {
+            if(other != w) {
+                Clause cardNotInCaseFile;
+                cardNotInCaseFile.push_back(GetPairNum("cf", weapons[other]) * -1);
+            }
+        }
+        if(oneCardOfCategoryInCaseFile.empty()) {
+            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
+        } else {
+            vector<Clause> temp = oneCardOfCategoryInCaseFile;
+            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+        }
+    }
+    for(Clause clause : oneCardOfCategoryInCaseFile) {
+        solver->AddClause(clause);
+    }
+    oneCardOfCategoryInCaseFile.empty();
+    
+    for(int r = 0; r <= num_rooms; r++) { //Iterate over all players
+        vector<Clause> cardInCaseFileConjunction;
+        Clause cardInCaseFileClause;
+        cardInCaseFileClause.push_back(GetPairNum("cf", rooms[r]));
+        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
+        for(int other = 0; other <= num_suspects; other++) {
+            if(other != r) {
+                Clause cardNotInCaseFile;
+                cardNotInCaseFile.push_back(GetPairNum("cf", rooms[other]) * -1);
+            }
+        }
+        if(oneCardOfCategoryInCaseFile.empty()) {
+            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
+        } else {
+            vector<Clause> temp = oneCardOfCategoryInCaseFile;
+            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+        }
+    }
+    for(Clause clause : oneCardOfCategoryInCaseFile) {
+        solver->AddClause(clause);
+    }
+    oneCardOfCategoryInCaseFile.empty();
 }
+
 
 void ClueReasoner::Hand(string player, string cards[3])
 {
