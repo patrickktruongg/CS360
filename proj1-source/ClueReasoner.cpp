@@ -138,7 +138,27 @@ void ClueReasoner::AddInitialClauses()
     }
 	
 	// At least one card of each category is in the case file.
-	// TO BE IMPLEMENTED AS AN EXERCISE
+	/*
+        For this to happen, the case file must have one of the suspects, weapons, rooms, and cards. Can use a simple conjunction of disjunctions
+     */
+    Clause caseFileClause;
+    for(int i = 0; i < num_suspects; i++) {
+        caseFileClause.push_back(GetPairNum("cf", suspects[i]));
+    }
+    solver->AddClause(caseFileClause);
+    caseFileClause.empty();
+    
+    for(int i = 0; i < num_weapons; i++) {
+        caseFileClause.push_back(GetPairNum("cf", weapons[i]));
+    }
+    solver->AddClause(caseFileClause);
+    caseFileClause.empty();
+    
+    for(int i = 0; i < num_rooms; i++) {
+        caseFileClause.push_back(GetPairNum("cf", rooms[i]));
+    }
+    solver->AddClause(caseFileClause);
+    caseFileClause.empty();
 
 	// No two cards in each category can both be in the case file.
 	// TO BE IMPLEMENTED AS AN EXERCISE
@@ -166,7 +186,7 @@ void ClueReasoner::Accuse(string suggester, string card1, string card2, string c
 	// TO BE IMPLEMENTED AS AN EXERCISE (you don't need to implement this)
 }
 
-vector<Clause> MoveDisjunctionsToConjunctions(vector<Clause> disjunctionOne, vector<Clause> disjunctionTwo)
+vector<Clause> ClueReasoner::MoveDisjunctionsToConjunctions(vector<Clause> disjunctionOne, vector<Clause> disjunctionTwo)
 {
     /*
         We will treat disjunctionOne as the literals we will distribute. If we have (s1 ^ s2) v (s3 ^ s4), we will treat (s3 ^ s4) as just S2. When we then have (s1 v S2) ^ (s2 v S2), we will use DistributeLiteralsToConjunction and treat each s1 and s2 as the one literal with S2 as our right conjunction previously.
@@ -175,7 +195,7 @@ vector<Clause> MoveDisjunctionsToConjunctions(vector<Clause> disjunctionOne, vec
     for(Clause disjunctionOneClause : disjunctionOne) {
         for(Literal literal : disjunctionOneClause) {
             //Distribute literal, and then add to result
-            vector<Clause> literalsDistributed = DistributeLiteralsToConjunction(clause[i], disjunctionTwo);
+            vector<Clause> literalsDistributed = DistributeLiteralsToConjunction(literal, disjunctionTwo);
             result.insert(result.end(), literalsDistributed.begin(), literalsDistributed.end());
         }
     }
@@ -183,7 +203,7 @@ vector<Clause> MoveDisjunctionsToConjunctions(vector<Clause> disjunctionOne, vec
     return result;
 }
 
-vector<Clause> DistributeLiteralsToConjunctions(Literal literal, vector<Clause> conjunctions)
+vector<Clause> ClueReasoner::DistributeLiteralsToConjunction(Literal literal, vector<Clause> conjunctions)
 {
     /*
         Given a disjunction of a literal and a conjunction, use distributive property to make a conjunction of disjunctions
