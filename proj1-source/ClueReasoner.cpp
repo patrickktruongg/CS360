@@ -90,50 +90,18 @@ void ClueReasoner::AddInitialClauses()
 	}
 	
 	// If a card is in one place, it cannot be in another place.
-    
-    /*
-     The statement for a card only being in one place can be written as:
-     (P1 has C0, and no one else does) OR (P2 has C0, and no one else does) OR (etc...)
-     (C1p1 AND !C1p2 ... AND !C1p7) OR (!C1p1 AND C2p2 ... AND !C1p7) ...
-     If we represent each conjunction as a symbol, we would have
-     S1 OR S2 OR S3 OR ... S7
-     We can solve this by expanding each statement one at a time
-     S1 OR S2 OR ... S6 OR (!C1p1 AND !C1p2 AND ... C1P7)
-     Using distributive property, it can be written as:
-     S1 OR ... S5 OR [(S6 OR !C1p1) AND (S6 OR !C1p2)....]
-     Expand S6
-     S1 OR ... S5 OR [((!C1p1 AND ... C1p6 AND !C1p7) OR !C1p1) AND ...]
-     S1 OR ... S5 OR [(!C1p1 OR !C1p7) AND (!C1p2 OR !C1p7) AND ...]
-     Distribute S5
-     S1 OR ... S4 OR [(S4 OR !C1p1 OR !C1p7) AND (S4 OR !C1p2 OR !C1p7) AND ...]
-     And the pattern goes on --> slowly distribute over and over again until we get our clauses
-     Because we are iteratively going, we can continuously add create our conjunction for one player, then combine it with the next, and so on.
-     
-     We will utilize MoveDisjunctionToConjunctions to implement this.
-     */
-    
     for(int c = 0; c < num_cards; c++) { //Iterate over all cards
         vector<Clause> oneCardDisjunction; //A disjunction of a card being in one place
         for(int p = 0; p <= num_players; p++) { //Iterate over all players
-            vector<Clause> playerHasCardConjunction;
-            Clause playerHasCardClause;
-            playerHasCardClause.push_back(GetPairNum(p, c));
-            playerHasCardConjunction.push_back(playerHasCardClause);
-            for(int otherPlayer = 0; otherPlayer <= num_players; otherPlayer++) {
-                if(otherPlayer != p) {
-                    Clause playerDoesntHaveCard;
-                    playerDoesntHaveCard.push_back(GetPairNum(otherPlayer, c) * -1);
-                }
+            int playerIndex = p;
+            int nextPlayerIndex = (p == num_players) ? 0 : p + 1;
+            while(nextPlayerIndex != playerIndex) {
+                Clause clause;
+                clause.push_back(GetPairNum(playerIndex, c) * -1);
+                clause.push_back(GetPairNum(nextPlayerIndex, c) * -1);
+                solver->AddClause(clause);
+                nextPlayerIndex = (nextPlayerIndex == num_players) ? 0 : nextPlayerIndex + 1;
             }
-            if(oneCardDisjunction.empty()) {
-                oneCardDisjunction = playerHasCardConjunction;
-            } else {
-                vector<Clause> temp = oneCardDisjunction;
-                oneCardDisjunction = MoveDisjunctionsToConjunctions(temp, playerHasCardConjunction);
-            }
-        }
-        for(Clause clause : oneCardDisjunction) {
-            solver->AddClause(clause);
         }
     }
 	
@@ -146,91 +114,58 @@ void ClueReasoner::AddInitialClauses()
         caseFileClause.push_back(GetPairNum("cf", suspects[i]));
     }
     solver->AddClause(caseFileClause);
-    caseFileClause.empty();
+    caseFileClause.clear();
     
     for(int i = 0; i < num_weapons; i++) {
         caseFileClause.push_back(GetPairNum("cf", weapons[i]));
     }
     solver->AddClause(caseFileClause);
-    caseFileClause.empty();
+    caseFileClause.clear();
     
     for(int i = 0; i < num_rooms; i++) {
         caseFileClause.push_back(GetPairNum("cf", rooms[i]));
     }
     solver->AddClause(caseFileClause);
-    caseFileClause.empty();
+    caseFileClause.clear();
 
 	// No two cards in each category can both be in the case file.
 	//Similar logic to no cards should be in two places, except if there's one card of a category in the case file, then every other card cannot be assigned to the case file
-    vector<Clause> oneCardOfCategoryInCaseFile; //A disjunction of a card being in case file
-    for(int s = 0; s < num_suspects; s++) {
-        vector<Clause> cardInCaseFileConjunction;
-        Clause cardInCaseFileClause;
-        cardInCaseFileClause.push_back(GetPairNum("cf", suspects[s]));
-        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
-        for(int other = 0; other < num_suspects; other++) {
-            if(other != s) {
-                Clause cardNotInCaseFile;
-                cardNotInCaseFile.push_back(GetPairNum("cf", suspects[other]) * -1);
-            }
-        }
-        if(oneCardOfCategoryInCaseFile.empty()) {
-            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
-        } else {
-            vector<Clause> temp = oneCardOfCategoryInCaseFile;
-            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+    // If a card is in one place, it cannot be in another place.
+    for(int s = 0; s < num_suspects; s++) { //Iterate over suspect cards
+        int suspectIndex = s;
+        int nextSuspectIndex = (suspectIndex == num_suspects) ? 0 : s + 1;
+        while(nextSuspectIndex != suspectIndex) {
+            Clause clause;
+            clause.push_back(GetPairNum("cf", suspects[suspectIndex]) * -1);
+            clause.push_back(GetPairNum("cf", suspects[nextSuspectIndex]) * -1);
+            solver->AddClause(clause);
+            nextSuspectIndex = (nextSuspectIndex == num_suspects) ? 0 : nextSuspectIndex + 1;
         }
     }
-    for(Clause clause : oneCardOfCategoryInCaseFile) {
-        solver->AddClause(clause);
-    }
-    oneCardOfCategoryInCaseFile.clear();
     
-    for(int w = 0; w < num_weapons; w++) {
-        vector<Clause> cardInCaseFileConjunction;
-        Clause cardInCaseFileClause;
-        cardInCaseFileClause.push_back(GetPairNum("cf", weapons[w]));
-        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
-        for(int other = 0; other < num_weapons; other++) {
-            if(other != w) {
-                Clause cardNotInCaseFile;
-                cardNotInCaseFile.push_back(GetPairNum("cf", weapons[other]) * -1);
-            }
-        }
-        if(oneCardOfCategoryInCaseFile.empty()) {
-            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
-        } else {
-            vector<Clause> temp = oneCardOfCategoryInCaseFile;
-            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+    for(int w = 0; w < num_weapons; w++) { //Iterate over suspect cards
+        int weaponIndex = w;
+        int nextWeaponIndex = (weaponIndex == num_weapons) ? 0 : w + 1;
+        while(nextWeaponIndex != weaponIndex) {
+            Clause clause;
+            clause.push_back(GetPairNum("cf", weapons[weaponIndex]) * -1);
+            clause.push_back(GetPairNum("cf", weapons[nextWeaponIndex]) * -1);
+            solver->AddClause(clause);
+            nextWeaponIndex = (nextWeaponIndex == num_weapons) ? 0 : nextWeaponIndex + 1;
         }
     }
-    for(Clause clause : oneCardOfCategoryInCaseFile) {
-        solver->AddClause(clause);
-    }
-    oneCardOfCategoryInCaseFile.clear();
     
-    for(int r = 0; r < num_rooms; r++) {
-        vector<Clause> cardInCaseFileConjunction;
-        Clause cardInCaseFileClause;
-        cardInCaseFileClause.push_back(GetPairNum("cf", rooms[r]));
-        cardInCaseFileConjunction.push_back(cardInCaseFileClause);
-        for(int other = 0; other < num_rooms; other++) {
-            if(other != r) {
-                Clause cardNotInCaseFile;
-                cardNotInCaseFile.push_back(GetPairNum("cf", rooms[other]) * -1);
-            }
-        }
-        if(oneCardOfCategoryInCaseFile.empty()) {
-            oneCardOfCategoryInCaseFile = cardInCaseFileConjunction;
-        } else {
-            vector<Clause> temp = oneCardOfCategoryInCaseFile;
-            oneCardOfCategoryInCaseFile = MoveDisjunctionsToConjunctions(temp, cardInCaseFileConjunction);
+    for(int r = 0; r < num_rooms; r++) { //Iterate over suspect cards
+        int roomIndex = r;
+        int nextRoomIndex = (roomIndex == num_rooms) ? 0 : r + 1;
+        while(nextRoomIndex != roomIndex) {
+            Clause clause;
+            clause.push_back(GetPairNum("cf", weapons[roomIndex]) * -1);
+            clause.push_back(GetPairNum("cf", weapons[nextRoomIndex]) * -1);
+            solver->AddClause(clause);
+            nextRoomIndex = (nextRoomIndex == num_rooms) ? 0 : nextRoomIndex + 1;
         }
     }
-    for(Clause clause : oneCardOfCategoryInCaseFile) {
-        solver->AddClause(clause);
-    }
-    oneCardOfCategoryInCaseFile.clear();
 }
 
 
@@ -304,41 +239,6 @@ void ClueReasoner::Suggest(string suggester, string card1, string card2, string 
 void ClueReasoner::Accuse(string suggester, string card1, string card2, string card3, bool is_correct)
 {
 	// TO BE IMPLEMENTED AS AN EXERCISE (you don't need to implement this)
-}
-
-vector<Clause> ClueReasoner::MoveDisjunctionsToConjunctions(vector<Clause> disjunctionOne, vector<Clause> disjunctionTwo)
-{
-    /*
-        We will treat disjunctionOne as the literals we will distribute. If we have (s1 ^ s2) v (s3 ^ s4), we will treat (s3 ^ s4) as just S2. When we then have (s1 v S2) ^ (s2 v S2), we will use DistributeLiteralsToConjunction and treat each s1 and s2 as the one literal with S2 as our right conjunction previously.
-     */
-    vector<Clause> result;
-    for(Clause disjunctionOneClause : disjunctionOne) {
-        for(Literal literal : disjunctionOneClause) {
-            //Distribute literal, and then add to result
-            vector<Clause> literalsDistributed = DistributeLiteralsToConjunction(literal, disjunctionTwo);
-            result.insert(result.end(), literalsDistributed.begin(), literalsDistributed.end());
-        }
-    }
-    
-    return result;
-}
-
-vector<Clause> ClueReasoner::DistributeLiteralsToConjunction(Literal literal, vector<Clause> conjunctions)
-{
-    /*
-        Given a disjunction of a literal and a conjunction, use distributive property to make a conjunction of disjunctions
-        Using distributive property: s1 v (s2 ^ s3) = (s1 v s2) ^ (s1 v s3)
-     */
-    vector<Clause> result;
-    for(Clause clauseFromConjunction : conjunctions) {
-        for(Literal conjunctionLiteral : clauseFromConjunction) {
-            Clause clause;
-            clause.push_back(literal);
-            clause.push_back(conjunctionLiteral);
-            result.push_back(clause);
-        }
-    }
-    return result;
 }
 
 

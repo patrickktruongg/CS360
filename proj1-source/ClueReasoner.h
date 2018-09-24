@@ -53,11 +53,6 @@ public:
 	void Hand(std::string player, std::string cards[3]);
 	void Suggest(std::string suggester, std::string card1, std::string card2, std::string card3, std::string refuter, std::string card_shown);
 	void Accuse(std::string suggester, std::string card1, std::string card2, std::string card3, bool is_correct);
-    
-    //Helper Methods
-    std::vector<Clause> MoveDisjunctionsToConjunctions(std::vector<Clause> disjunctionOne, std::vector<Clause> disjunctionTwo);
-    
-    std::vector<Clause> DistributeLiteralsToConjunction(Literal literal, std::vector<Clause> conjunctions);
 	
 private:
 	int player_num;	// Id of the current player (determined after Hand(..) is called).
